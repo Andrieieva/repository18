@@ -4,92 +4,77 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-class Program
+public class Program
 {
     static void Main(string[] args)
     {
-        Console.WindowHeight = 16;
-        Console.WindowWidth = 32;
+        Console.WindowHeight = 22;
+        Console.WindowWidth = 40;
         int screenwidth = Console.WindowWidth;
         int screenheight = Console.WindowHeight;
         Random random = new Random();
 
-        SnakeGame game = new SnakeGame(screenwidth, screenheight);
+        Direction direction = Direction.Right;
 
-        game.Start();
-    }
-}
+        Snake snake = new Snake(new Position(screenwidth / 2, screenheight / 2));
 
-class SnakeGame
-{
-    private int screenwidth;
-    private int screenheight;
-    private Random random;
-    private Queue<Position> snake;
-    private int snakeLength;
-    private int score;
-    private bool gameOver;
-    private List<Position> foods;
-    private Direction direction;
-
-    public SnakeGame(int width, int height)
-    {
-        screenwidth = width;
-        screenheight = height;
-        random = new Random();
-
-        snake = new Queue<Position>();
-        snake.Enqueue(new Position(screenwidth / 2, screenheight / 2));
-        snakeLength = 1;
-        score = 0;
-        gameOver = false;
-
-        foods = new List<Position>();
+        List<Position> foods = new List<Position>();
         SpawnFood(foods, random, screenwidth, screenheight, 3);
 
-        direction = Direction.Right;
         DrawRedBricks(screenwidth, screenheight);
-    }
 
-    public void Start()
-    {
+        bool gameOver = false;
+        int score = 0;
+
         while (!gameOver)
         {
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true).Key;
-                ChangeDirection(key);
+                direction = GetNewDirection(key, direction);
             }
 
-            Position head = snake.Last();
-            Position newHead = CalculateNewHeadPosition(head, direction);
+            snake.Move(direction);
+            Position head = snake.Head;
 
-            if (IsCollision(newHead))
+            if (head.X == 0 || head.X >= screenwidth - 1 || head.Y == 0 || head.Y >= screenheight - 1 || snake.IsCollisionWithSelf())
             {
                 gameOver = true;
                 break;
             }
 
-            snake.Enqueue(newHead);
-            Console.SetCursorPosition(newHead.X, newHead.Y);
-            Console.Write("■");
-
-            bool foodEaten = CheckFoodCollision(newHead);
-            if (foodEaten)
+            bool foodEaten = false;
+            foreach (var food in foods)
             {
-                SpawnFood(foods, random, screenwidth, screenheight, 2);
-            }
-            else
-            {
-                if (snake.Count > snakeLength)
+                if (head.Equals(food))
                 {
-                    var tail = snake.Dequeue();
-                    Console.SetCursorPosition(tail.X, tail.Y);
-                    Console.Write(" ");
+                    score++;
+                    snake.EatFood();
+                    foodEaten = true;
+                    foods.Remove(food);
+                    break;
                 }
             }
 
-            DrawFoods();
+            if (foodEaten)
+            {
+                SpawnFood(foods, random, screenwidth, screenheight, 1);
+            }
+
+            Console.Clear();
+            DrawRedBricks(screenwidth, screenheight);
+            foreach (var food in foods)
+            {
+                Console.SetCursorPosition(food.X, food.Y);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("o");
+            }
+
+            foreach (var segment in snake.Body)
+            {
+                Console.SetCursorPosition(segment.X, segment.Y);
+                Console.Write("@");
+            }
 
             Thread.Sleep(150);
         }
@@ -101,94 +86,58 @@ class SnakeGame
         if (playAgain == 'Y' || playAgain == 'y')
         {
             Console.Clear();
-            Start();
+            Main(args);
         }
     }
 
-    private void ChangeDirection(ConsoleKey key)
+    static Direction GetNewDirection(ConsoleKey key, Direction currentDirection)
     {
         switch (key)
         {
             case ConsoleKey.UpArrow:
-            case ConsoleKey.W:
-                if (direction != Direction.Down)
-                    direction = Direction.Up;
+                if (currentDirection != Direction.Down)
+                    return Direction.Up;
                 break;
             case ConsoleKey.DownArrow:
-            case ConsoleKey.S:
-                if (direction != Direction.Up)
-                    direction = Direction.Down;
+                if (currentDirection != Direction.Up)
+                    return Direction.Down;
                 break;
             case ConsoleKey.LeftArrow:
-            case ConsoleKey.A:
-                if (direction != Direction.Right)
-                    direction = Direction.Left;
+                if (currentDirection != Direction.Right)
+                    return Direction.Left;
                 break;
             case ConsoleKey.RightArrow:
+                if (currentDirection != Direction.Left)
+                    return Direction.Right;
+                break;
+            case ConsoleKey.W:
+                if (currentDirection != Direction.Down)
+                    return Direction.Up;
+                break;
+            case ConsoleKey.S:
+                if (currentDirection != Direction.Up)
+                    return Direction.Down;
+                break;
+            case ConsoleKey.A:
+                if (currentDirection != Direction.Right)
+                    return Direction.Left;
+                break;
             case ConsoleKey.D:
-                if (direction != Direction.Left)
-                    direction = Direction.Right;
+                if (currentDirection != Direction.Left)
+                    return Direction.Right;
                 break;
         }
+        return currentDirection;
     }
-
-    private Position CalculateNewHeadPosition(Position head, Direction direction)
-    {
-        switch (direction)
-        {
-            case Direction.Up:
-                return new Position(head.X, head.Y - 1);
-            case Direction.Down:
-                return new Position(head.X, head.Y + 1);
-            case Direction.Left:
-                return new Position(head.X - 1, head.Y);
-            case Direction.Right:
-                return new Position(head.X + 1, head.Y);
-            default:
-                return head;
-        }
-    }
-
-    private bool IsCollision(Position newHead)
-    {
-        return newHead.X == 0 || newHead.X >= screenwidth - 1 || newHead.Y == 0 || newHead.Y >= screenheight - 1 || snake.Contains(newHead);
-    }
-
-    private bool CheckFoodCollision(Position newHead)
-    {
-        foreach (var food in foods)
-        {
-            if (newHead.Equals(food))
-            {
-                score++;
-                snakeLength++;
-                foods.Remove(food);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void DrawFoods()
-    {
-        foreach (var food in foods)
-        {
-            Console.SetCursorPosition(food.X, food.Y);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write("■");
-        }
-    }
-
-    private void GameOver(int score)
+    static void GameOver(int score)
     {
         Console.Clear();
         Console.SetCursorPosition(10, 10);
         Console.WriteLine("Game over! Your score: " + score);
     }
 
-    private void SpawnFood(List<Position> foods, Random random, int screenwidth, int screenheight, int count)
+    static void SpawnFood(List<Position> foods, Random random, int screenwidth, int screenheight, int count)
     {
-        foods.Clear();
         for (int i = 0; i < count; i++)
         {
             int x = random.Next(1, screenwidth - 1);
@@ -197,7 +146,7 @@ class SnakeGame
         }
     }
 
-    private void DrawRedBricks(int screenWidth, int screenHeight)
+    static void DrawRedBricks(int screenWidth, int screenHeight)
     {
         Console.ForegroundColor = ConsoleColor.Red;
         for (int i = 0; i < screenWidth; i++)
@@ -217,7 +166,7 @@ class SnakeGame
     }
 }
 
-enum Direction
+public enum Direction
 {
     Up,
     Down,
@@ -225,7 +174,7 @@ enum Direction
     Right
 }
 
-struct Position
+public struct Position
 {
     public int X { get; }
     public int Y { get; }
@@ -240,3 +189,4 @@ struct Position
         return X == other.X && Y == other.Y;
     }
 }
+
