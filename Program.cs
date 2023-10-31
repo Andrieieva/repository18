@@ -21,7 +21,7 @@ class Program
         bool gameOver = false;
 
         List<Position> foods = new List<Position>();
-        SpawnFood(foods, random, screenwidth, screenheight, 4);
+        SpawnFood(foods, random, screenwidth, screenheight, 3);
 
         Direction direction = Direction.Right;
 
