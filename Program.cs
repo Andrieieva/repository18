@@ -4,52 +4,79 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Program
+class Program
 {
     static void Main(string[] args)
     {
-        Console.WindowHeight = 22;
-        Console.WindowWidth = 40;
+        Console.WindowHeight = 20;
+        Console.WindowWidth = 44;
         int screenwidth = Console.WindowWidth;
         int screenheight = Console.WindowHeight;
         Random random = new Random();
 
-        Direction direction = Direction.Right;
-
-        Snake snake = new Snake(new Position(screenwidth / 2, screenheight / 2));
+        Queue<Position> snake = new Queue<Position>();
+        snake.Enqueue(new Position(screenwidth / 2, screenheight / 2));
+        int snakeLength = 1;
+        int score = 0;
+        bool gameOver = false;
 
         List<Position> foods = new List<Position>();
-        SpawnFood(foods, random, screenwidth, screenheight, 3);
+        SpawnFood(foods, random, screenwidth, screenheight, 4);
+
+        Direction direction = Direction.Right;
 
         DrawRedBricks(screenwidth, screenheight);
-
-        bool gameOver = false;
-        int score = 0;
 
         while (!gameOver)
         {
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true).Key;
-                direction = GetNewDirection(key, direction);
+                switch (key)
+                {
+                    case ConsoleKey.UpArrow:
+                    case ConsoleKey.W:
+                        if (direction != Direction.Down)
+                            direction = Direction.Up;
+                        break;
+                    case ConsoleKey.DownArrow:
+                    case ConsoleKey.S:
+                        if (direction != Direction.Up)
+                            direction = Direction.Down;
+                        break;
+                    case ConsoleKey.LeftArrow:
+                    case ConsoleKey.A:
+                        if (direction != Direction.Right)
+                            direction = Direction.Left;
+                        break;
+                    case ConsoleKey.RightArrow:
+                    case ConsoleKey.D:
+                        if (direction != Direction.Left)
+                            direction = Direction.Right;
+                        break;
+                }
             }
 
-            snake.Move(direction);
-            Position head = snake.Head;
+            Position head = snake.Last();
+            Position newHead = CalculateNewHeadPosition(head, direction);
 
-            if (head.X == 0 || head.X >= screenwidth - 1 || head.Y == 0 || head.Y >= screenheight - 1 || snake.IsCollisionWithSelf())
+            if (newHead.X == 0 || newHead.X >= screenwidth - 1 || newHead.Y == 0 || newHead.Y >= screenheight - 1 || snake.Contains(newHead))
             {
                 gameOver = true;
                 break;
             }
 
+            snake.Enqueue(newHead);
+            Console.SetCursorPosition(newHead.X, newHead.Y);
+            Console.Write("@");
+
             bool foodEaten = false;
             foreach (var food in foods)
             {
-                if (head.Equals(food))
+                if (newHead.Equals(food))
                 {
                     score++;
-                    snake.EatFood();
+                    snakeLength++;
                     foodEaten = true;
                     foods.Remove(food);
                     break;
@@ -58,11 +85,18 @@ public class Program
 
             if (foodEaten)
             {
-                SpawnFood(foods, random, screenwidth, screenheight, 1);
+                SpawnFood(foods, random, screenwidth, screenheight, 2);
+            }
+            else
+            {
+                if (snake.Count > snakeLength)
+                {
+                    var tail = snake.Dequeue();
+                    Console.SetCursorPosition(tail.X, tail.Y);
+                    Console.Write(" ");
+                }
             }
 
-            Console.Clear();
-            DrawRedBricks(screenwidth, screenheight);
             foreach (var food in foods)
             {
                 Console.SetCursorPosition(food.X, food.Y);
@@ -70,13 +104,7 @@ public class Program
                 Console.Write("o");
             }
 
-            foreach (var segment in snake.Body)
-            {
-                Console.SetCursorPosition(segment.X, segment.Y);
-                Console.Write("@");
-            }
-
-            Thread.Sleep(150);
+            Thread.Sleep(200);
         }
 
         GameOver(score);
@@ -90,45 +118,23 @@ public class Program
         }
     }
 
-    static Direction GetNewDirection(ConsoleKey key, Direction currentDirection)
+    static Position CalculateNewHeadPosition(Position head, Direction direction)
     {
-        switch (key)
+        switch (direction)
         {
-            case ConsoleKey.UpArrow:
-                if (currentDirection != Direction.Down)
-                    return Direction.Up;
-                break;
-            case ConsoleKey.DownArrow:
-                if (currentDirection != Direction.Up)
-                    return Direction.Down;
-                break;
-            case ConsoleKey.LeftArrow:
-                if (currentDirection != Direction.Right)
-                    return Direction.Left;
-                break;
-            case ConsoleKey.RightArrow:
-                if (currentDirection != Direction.Left)
-                    return Direction.Right;
-                break;
-            case ConsoleKey.W:
-                if (currentDirection != Direction.Down)
-                    return Direction.Up;
-                break;
-            case ConsoleKey.S:
-                if (currentDirection != Direction.Up)
-                    return Direction.Down;
-                break;
-            case ConsoleKey.A:
-                if (currentDirection != Direction.Right)
-                    return Direction.Left;
-                break;
-            case ConsoleKey.D:
-                if (currentDirection != Direction.Left)
-                    return Direction.Right;
-                break;
+            case Direction.Up:
+                return new Position(head.X, head.Y - 1);
+            case Direction.Down:
+                return new Position(head.X, head.Y + 1);
+            case Direction.Left:
+                return new Position(head.X - 1, head.Y);
+            case Direction.Right:
+                return new Position(head.X + 1, head.Y);
+            default:
+                return head;
         }
-        return currentDirection;
     }
+
     static void GameOver(int score)
     {
         Console.Clear();
@@ -138,6 +144,7 @@ public class Program
 
     static void SpawnFood(List<Position> foods, Random random, int screenwidth, int screenheight, int count)
     {
+        foods.Clear();
         for (int i = 0; i < count; i++)
         {
             int x = random.Next(1, screenwidth - 1);
@@ -166,7 +173,7 @@ public class Program
     }
 }
 
-public enum Direction
+enum Direction
 {
     Up,
     Down,
@@ -174,7 +181,7 @@ public enum Direction
     Right
 }
 
-public struct Position
+struct Position
 {
     public int X { get; }
     public int Y { get; }
@@ -189,4 +196,3 @@ public struct Position
         return X == other.X && Y == other.Y;
     }
 }
-
