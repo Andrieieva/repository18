@@ -1,25 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
-public class Snake
+using System.Linq;
+
+class Snake
 {
     private List<Position> body;
     private int growthSpurts;
-
-    public Snake(Position initialPosition)
+    public Snake(int initialX, int initialY)
     {
-        body = new List<Position> { initialPosition };
+        body = new List<Position> { new Position(initialX, initialY) };
         growthSpurts = 0;
+        CurrentDirection = Direction.Right;
     }
-
     public IReadOnlyList<Position> Body => body;
-
     public int Length => body.Count;
 
     public Position Head => body.Last();
+    public Direction CurrentDirection { get; private set; }
 
-    public void Move(Direction direction)
+    public void ChangeDirection(Direction newDirection)
     {
-        Position newHead = CalculateNewHeadPosition(direction);
+        if (newDirection == Direction.Left && CurrentDirection != Direction.Right ||
+            newDirection == Direction.Right && CurrentDirection != Direction.Left ||
+            newDirection == Direction.Up && CurrentDirection != Direction.Down ||
+            newDirection == Direction.Down && CurrentDirection != Direction.Up)
+        {
+            CurrentDirection = newDirection;
+        }
+    }
+    public void Move()
+    {
+        Position newHead = CalculateNewHeadPosition(CurrentDirection);
         body.Add(newHead);
 
         if (growthSpurts > 0)
@@ -31,12 +42,10 @@ public class Snake
             body.RemoveAt(0);
         }
     }
-
     public void EatFood()
     {
         growthSpurts++;
     }
-
     public bool IsCollisionWithSelf()
     {
         for (int i = 0; i < body.Count - 1; i++)
@@ -48,7 +57,6 @@ public class Snake
         }
         return false;
     }
-
     private Position CalculateNewHeadPosition(Direction direction)
     {
         Position head = Head;
