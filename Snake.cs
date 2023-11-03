@@ -4,63 +4,21 @@ using System.Linq;
 
 class Snake
 {
-    private List<Position> body;
-    private int growthSpurts;
+    public List<Position> Body { get; private set; }
+
     public Snake(int initialX, int initialY)
     {
-        body = new List<Position> { new Position(initialX, initialY) };
-        growthSpurts = 0;
-        CurrentDirection = Direction.Right;
+        Body = new List<Position> { new Position(initialX, initialY) };
     }
-    public IReadOnlyList<Position> Body => body;
-    public int Length => body.Count;
 
-    public Position Head => body.Last();
-    public Direction CurrentDirection { get; private set; }
+    public void Move(Position newHead)
+    {
+        Body.Add(newHead);
+    }
 
-    public void ChangeDirection(Direction newDirection)
-    {
-        if (newDirection == Direction.Left && CurrentDirection != Direction.Right ||
-            newDirection == Direction.Right && CurrentDirection != Direction.Left ||
-            newDirection == Direction.Up && CurrentDirection != Direction.Down ||
-            newDirection == Direction.Down && CurrentDirection != Direction.Up)
-        {
-            CurrentDirection = newDirection;
-        }
-    }
-    public void Move()
-    {
-        Position newHead = CalculateNewHeadPosition(CurrentDirection);
-        body.Add(newHead);
-
-        if (growthSpurts > 0)
-        {
-            growthSpurts--;
-        }
-        else
-        {
-            body.RemoveAt(0);
-        }
-    }
-    public void EatFood()
-    {
-        growthSpurts++;
-    }
-    public bool IsCollisionWithSelf()
-    {
-        for (int i = 0; i < body.Count - 1; i++)
-        {
-            if (body[i].Equals(Head))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-    private Position CalculateNewHeadPosition(Direction direction)
+    public Position CalculateNewHeadPosition(Direction direction)
     {
         Position head = Head;
-
         switch (direction)
         {
             case Direction.Up:
@@ -74,5 +32,54 @@ class Snake
             default:
                 return head;
         }
+    }
+
+    public Position Head => Body.Last();
+
+    public bool EatFood(List<Position> foods)
+    {
+        Position head = Body.Last();
+
+        for (int i = 0; i < foods.Count; i++)
+        {
+            if (head.Equals(foods[i]))
+            {
+                Body.Add(foods[i]);
+                foods.RemoveAt(i);
+                return true; 
+            }
+        }
+
+        return false; 
+    }
+
+    public bool IsCollisionWithSelf(Position newHead)
+    {
+        return Body.GetRange(0, Body.Count - 1).Contains(newHead);
+    }
+}
+
+enum Direction
+{
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+struct Position
+{
+    public int X { get; }
+    public int Y { get; }
+
+    public Position(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public bool Equals(Position other)
+    {
+        return X == other.X && Y == other.Y;
     }
 }
